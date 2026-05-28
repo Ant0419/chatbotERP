@@ -1,0 +1,21 @@
+# Backend dependencies — ERP con LLMs
+# Nota: el SDK oficial de Google Gemini es "google-generativeai"
+# No existe ningún "google-antigravity" — ese nombre no corresponde a ningún paquete real.
+
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Validación de datos
+pydantic==2.5.3
+pydantic_core==2.14.6
+sniffio==1.3.0
+typing_extensions==4.9.0
+openai
+# MongoDB async driver
+motor==3.6.0
+pymongo==4.9.2
+
+# Utilidades
+python-dotenv==1.0.1
+httpx==0.27.2
