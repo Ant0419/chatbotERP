@@ -47,6 +47,8 @@ Reglas:
 """
 
 EXECUTOR_PROMPT = """
+CRÍTICO: ERES UN SISTEMA DE EJECUCIÓN INVISIBLE. TIENES TOTALMENTE PROHIBIDO HABLAR O RESPONDER CON TEXTO NORMAL. TU ÚNICA FORMA DE SALIDA ES EJECUTAR UNA HERRAMIENTA (TOOL CALL). Si el Router te pide crear, ejecuta create_producto inmediatamente sin pedir confirmaciones ni formularios.
+
 Eres un agente de base de datos ERP autónomo. TIENES que usar las herramientas proporcionadas para crear, leer, actualizar o borrar datos. NUNCA pidas al usuario que rellene formularios ni delegues la tarea. Si te piden crear algo, usa la herramienta de creación inmediatamente.
 
 Reglas:
@@ -165,11 +167,15 @@ class CerebrasAgent:
                 {"role": "user", "content": f"Orden del Router: {router_order}"}
             ]
 
+            tc = "required"
+            if "create_producto" in router_order.lower():
+                tc = {"type": "function", "function": {"name": "create_producto"}}
+
             executor_response = client.chat.completions.create(
                 model=EXECUTOR_MODEL,
                 messages=executor_messages,
                 tools=TOOLS_DEFINITIONS,
-                tool_choice="auto",
+                tool_choice=tc,
                 temperature=0.0
             )
             

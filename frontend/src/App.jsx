@@ -260,28 +260,27 @@ export default function App() {
         {/* Bloque 2: Inventario Live */}
         <DashboardBlock title="Datos en Vivo">
           {dashboardData.length > 0 ? (
-            <div className="space-y-4">
-              {dashboardData.map((item, idx) => {
-                const name = item.nombre || item.id || `Item ${idx}`;
-                const val = item.stock !== undefined ? Number(item.stock) : (item.total || 0);
-                const percent = maxStock > 0 ? Math.min(100, Math.max(2, (val / maxStock) * 100)) : 0;
-                
-                return (
-                  <div key={idx} className="group">
-                    <div className="flex justify-between items-end mb-1.5">
-                      <span className="text-sm font-medium text-slate-300 truncate pr-4">{name}</span>
-                      <span className="text-xs font-bold text-slate-400">{val}</span>
-                    </div>
-                    {/* Barra de progreso */}
-                    <div className="h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-cyan-500 rounded-full transition-all duration-1000 ease-out group-hover:bg-cyan-400"
-                        style={{ width: `${percent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700/50">
+                  <tr>
+                    <th className="px-4 py-3 font-medium rounded-tl-lg">Nombre</th>
+                    <th className="px-4 py-3 font-medium">SKU</th>
+                    <th className="px-4 py-3 font-medium">Precio</th>
+                    <th className="px-4 py-3 font-medium rounded-tr-lg">Stock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {dashboardData.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-4 py-3 font-medium">{item.nombre || item.id || `Item ${idx}`}</td>
+                      <td className="px-4 py-3 text-slate-400">{item.sku || "N/A"}</td>
+                      <td className="px-4 py-3 text-slate-400">{item.precio_venta !== undefined ? `$${item.precio_venta}` : "N/A"}</td>
+                      <td className="px-4 py-3 font-bold text-cyan-400">{item.stock !== undefined ? item.stock : (item.total || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-700/50 rounded-lg">

@@ -4,6 +4,7 @@
 # Formato: OpenAI JSON Schema.
 
 import os
+import uuid
 from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -34,19 +35,19 @@ TOOLS_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "create_producto",
-            "description": "Crea un nuevo producto en el inventario.",
+            "description": "Crea un nuevo producto en el inventario. No inventes el SKU a menos que el usuario pida uno específico.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "nombre": {"type": "string"},
-                    "sku": {"type": "string"},
+                    "sku": {"type": "string", "description": "DEJA ESTE CAMPO VACÍO. El sistema lo genera solo."},
                     "stock": {"type": "integer"},
                     "precio_venta": {"type": "number"},
                     "precio_compra": {"type": "number"},
                     "categoria": {"type": "string"},
                     "fecha_caducidad": {"type": "string", "description": "ISO 8601, ej: 2025-12-31"},
                 },
-                "required": ["nombre", "sku", "stock", "precio_venta"],
+                "required": ["nombre", "stock", "precio_venta"],
             },
         }
     },
@@ -212,6 +213,8 @@ async def _get_productos(categoria=None, stock_min=None):
     return {"productos": productos, "total": len(productos)}
 
 async def _create_producto(**kwargs):
+    if not kwargs.get("sku"):
+        kwargs["sku"] = f"PROD-{uuid.uuid4().hex[:6].upper()}"
     result = await db.productos.insert_one(kwargs)
     return {"ok": True, "message": f"Producto '{kwargs.get('nombre')}' creado con SKU {kwargs.get('sku')} y _id {str(result.inserted_id)}."}
 
