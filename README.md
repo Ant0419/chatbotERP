@@ -1,245 +1,138 @@
-<![CDATA[<div align="center">
+# Stock Atelier
 
-# 🏪 Stock Atelier
+Un ERP de gestión de inventario controlado por lenguaje natural. En vez de rellenar formularios, le dices al chat lo que necesitas y el sistema se encarga del resto.
 
-### ERP Inteligente controlado por Lenguaje Natural
+Está construido con una arquitectura multi-agente: tres modelos LLM de Cerebras encadenados (Router → Executor → Formatter) que interpretan la petición del usuario, ejecutan la operación contra MongoDB y devuelven la respuesta formateada.
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![Cerebras](https://img.shields.io/badge/Cerebras_AI-LLM-FF6B35?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiAyMmgyMEwxMiAyeiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=&logoColor=white)](https://cerebras.ai/)
-
-*Prototipo de ERP para la asignatura Sistemas de la Información Empresarial (UMA)*
-*Traduce instrucciones en lenguaje natural a operaciones CRUD sobre la base de datos mediante agentes LLM.*
+> Práctica 2 de Sistemas de la Información Empresarial — Universidad de Málaga, curso 2025/2026.
 
 ---
 
-</div>
+## Qué hace
 
-## 📖 Descripción
-
-**Stock Atelier** es un sistema ERP (Enterprise Resource Planning) asistido por Inteligencia Artificial que permite gestionar el inventario, proveedores, pedidos de compra y control de caducidades de un negocio **usando únicamente lenguaje natural**.
-
-En lugar de formularios tradicionales, el usuario escribe peticiones en un chat conversacional — *"Crea un producto llamado Aceite 1L con 50 unidades a 3,50€"* — y una **cadena de 3 agentes LLM** (Router → Executor → Formatter) se encarga de interpretar la intención, ejecutar la operación correspondiente en MongoDB y devolver la respuesta formateada al frontend.
-
----
-
-## ✨ Características Principales
-
-| Módulo | Funcionalidad |
-|---|---|
-| **📦 Productos** | CRUD completo con autogeneración de SKU (`PROD-XXXXXX`), control de stock, precios y fechas de caducidad. |
-| **🏢 Proveedores** | Alta, consulta, modificación y baja con código autogenerado (`PROV-XXXXXX`). |
-| **📋 Pedidos** | Creación de pedidos vinculados a proveedores con **integridad referencial**, suma instantánea de stock y código de pedido automático (`ORD-XXXXXX`). |
-| **🗑️ Desechos** | Procesamiento automático de productos caducados: los elimina del inventario y registra la pérdida económica. |
-| **📊 Estadísticas** | Stock por categoría, top 10 productos, pedidos por mes y pérdidas acumuladas por desechos. |
-| **📈 Dashboard** | Panel lateral en tiempo real con tablas de productos, proveedores y últimos pedidos que se actualiza tras cada operación. |
-| **💬 Chat con IA** | Interfaz conversacional con botones de acceso rápido, historial de contexto y respuestas formateadas con viñetas. |
+- **Productos**: crear, listar, actualizar y borrar. El SKU se genera solo (`PROD-XXXXXX`). Incluye stock, precios y fecha de caducidad.
+- **Proveedores**: CRUD completo con código autogenerado (`PROV-XXXXXX`).
+- **Pedidos**: se vinculan a un proveedor existente (integridad referencial). El stock se suma automáticamente al crear el pedido. Código autogenerado (`ORD-XXXXXX`).
+- **Desechos**: revisa qué productos han caducado, los retira del inventario y registra la pérdida económica.
+- **Estadísticas**: stock por categoría, top 10 productos, pedidos por mes y pérdidas acumuladas.
+- **Dashboard**: panel lateral que muestra productos, proveedores y pedidos en tiempo real.
 
 ---
 
-## 🧠 Arquitectura Multi-Agente
-
-El sistema utiliza una **cadena secuencial de 3 modelos LLM** de Cerebras AI, cada uno con un rol especializado:
+## Cómo funciona por dentro
 
 ```
-┌──────────┐      ┌───────────┐      ┌───────────┐
-│  Router  │ ───► │ Executor  │ ───► │ Formatter │
-│ zai-glm  │      │ gpt-oss   │      │ zai-glm   │
-│  4.7     │      │  120b     │      │  4.7      │
-└──────────┘      └───────────┘      └───────────┘
-  Analiza            Ejecuta           Empaqueta
-  intención          tools/DB          JSON → UI
+Usuario ──► Router (zai-glm-4.7) ──► Executor (gpt-oss-120b) ──► Formatter (zai-glm-4.7) ──► Frontend
+             analiza intención         ejecuta tools en MongoDB      empaqueta JSON para la UI
 ```
 
-1. **Router** — Analiza la petición del usuario y genera una orden técnica inequívoca.
-2. **Executor** — Recibe la orden y ejecuta la herramienta (Function Calling) correspondiente contra MongoDB.
-3. **Formatter** — Toma los datos crudos y los empaqueta en un JSON estructurado que el frontend renderiza.
+1. El **Router** lee lo que escribió el usuario y genera una orden técnica clara (ej: "Ejecuta create_producto con nombre='Arroz', stock=100").
+2. El **Executor** recibe esa orden y hace Function Calling contra la base de datos.
+3. El **Formatter** coge los datos crudos y los mete en un JSON estructurado que el frontend sabe renderizar.
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Stack
 
-### Frontend
-| Tecnología | Versión | Uso |
-|---|---|---|
-| **React** | 19.x | Librería de UI |
-| **Vite** | 8.x | Bundler y dev server |
-| **Tailwind CSS** | 4.x | Framework de estilos utility-first |
+**Frontend:** React 19 · Vite 8 · Tailwind CSS 4
 
-### Backend
-| Tecnología | Versión | Uso |
-|---|---|---|
-| **FastAPI** | 0.115 | Framework web asíncrono |
-| **Python** | 3.12 | Lenguaje del servidor |
-| **Motor** | 3.6 | Driver asíncrono para MongoDB |
-| **Pydantic** | 2.5 | Validación de datos |
-| **OpenAI SDK** | latest | Cliente compatible con la API de Cerebras |
+**Backend:** FastAPI 0.115 · Python 3.12 · Motor 3.6 (async MongoDB)
 
-### Infraestructura
-| Tecnología | Uso |
-|---|---|
-| **Docker & Docker Compose** | Orquestación de los 3 servicios (MongoDB, Backend, Frontend) |
-| **MongoDB 7** | Base de datos NoSQL |
-| **Cerebras AI** | Proveedor de modelos LLM (zai-glm-4.7, gpt-oss-120b) |
+**Base de datos:** MongoDB 7
+
+**IA:** Cerebras AI (modelos zai-glm-4.7 y gpt-oss-120b, via OpenAI SDK)
+
+**Infra:** Docker + Docker Compose
 
 ---
 
-## 📋 Requisitos Previos
+## Requisitos
 
-Antes de empezar, asegúrate de tener instalado:
+- Docker y Docker Compose instalados ([descargar](https://docs.docker.com/get-docker/))
+- Una API Key de Cerebras ([obtener aquí](https://cloud.cerebras.ai/))
 
-- **Docker** (v20.10+) y **Docker Compose** (v2+)
-  - 📥 [Instalar Docker Desktop](https://docs.docker.com/get-docker/)
-- **API Key de Cerebras AI**
-  - 🔑 [Obtener clave en cerebras.ai](https://cloud.cerebras.ai/)
-
-> [!NOTE]
-> No necesitas instalar Python, Node.js ni MongoDB en tu máquina. Docker se encarga de todo.
+No hace falta tener Python, Node ni MongoDB instalados — Docker monta todo.
 
 ---
 
-## 🚀 Instalación y Ejecución
+## Puesta en marcha
 
-### Paso 1 — Clonar el repositorio
+**1. Clonar el repo**
 
 ```bash
-git clone https://github.com/tu-usuario/chatbotERP.git
+git clone https://github.com/Ant0419/chatbotERP.git
 cd chatbotERP
 ```
 
-### Paso 2 — Configurar las variables de entorno
+**2. Crear el `.env`**
 
-Crea el archivo `.env` dentro de la carpeta `backend/`:
-
-```bash
-touch backend/.env
-```
-
-Abre el archivo y añade tu clave de API de Cerebras:
+Crea un archivo `backend/.env` con tu clave:
 
 ```env
-# backend/.env
-CEREBRAS_API_KEY=tu_clave_de_cerebras_aqui
+CEREBRAS_API_KEY=tu_clave_aqui
 ```
 
-> [!IMPORTANT]
-> El archivo `.env` está incluido en `.gitignore` y **nunca** se sube al repositorio. Cada usuario debe crear el suyo con su propia API Key.
+> Este archivo está en `.gitignore`, no se sube al repo.
 
-### Paso 3 — Levantar el proyecto con Docker
+**3. Levantar todo**
 
 ```bash
 docker-compose up --build -d
 ```
 
-Este comando construye las imágenes y levanta los 3 contenedores en segundo plano:
+**4. Abrir en el navegador**
 
-| Servicio | Contenedor | Puerto |
-|---|---|---|
-| MongoDB | `mongodb` | `27017` |
-| Backend (FastAPI) | `backend` | `8000` |
-| Frontend (React) | `frontend` | `5173` |
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- API docs (Swagger): [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### Paso 4 — Acceder a la aplicación
+Para parar:
 
-| Recurso | URL |
-|---|---|
-| 🖥️ **Frontend (Chat + Dashboard)** | [http://localhost:5173](http://localhost:5173) |
-| 📡 **Backend API (Swagger/OpenAPI)** | [http://localhost:8000/docs](http://localhost:8000/docs) |
-| ❤️ **Health Check** | [http://localhost:8000/api/health](http://localhost:8000/api/health) |
-
----
-
-## 💬 Ejemplos de Uso
-
-Una vez abierta la aplicación en el navegador, puedes escribir en el chat instrucciones como:
-
-```
-📦 Productos
-├── "Crea un producto llamado Aceite de Oliva 1L con 200 unidades, precio 4.50€ y caducidad 2027-06-15"
-├── "Muéstrame todos los productos"
-├── "Actualiza el stock del producto PROD-ABC123 a 500 unidades"
-└── "Elimina el producto con SKU PROD-ABC123"
-
-🏢 Proveedores
-├── "Registra un proveedor llamado Distribuciones García con email garcia@email.com"
-└── "Lista todos los proveedores"
-
-📋 Pedidos
-├── "Haz un pedido al proveedor PROV-ABC123 de 50 unidades de PROD-DEF456"
-└── "Muestra todos los pedidos"
-
-🗑️ Desechos
-└── "Revisa los productos caducados"
-
-📊 Estadísticas
-├── "Muéstrame las estadísticas de stock por categoría"
-└── "¿Cuáles son las pérdidas por desechos?"
+```bash
+docker-compose down        # mantiene los datos
+docker-compose down -v     # borra también la base de datos
 ```
 
 ---
 
-## 📁 Estructura del Proyecto
+## Ejemplos de lo que puedes escribir en el chat
 
 ```
-chatbotERP/
-├── docker-compose.yml          # Orquestación de servicios
-├── README.md                   # Este archivo
-├── .gitignore
-│
+"Crea un producto llamado Aceite de Oliva 1L con 200 unidades, precio 4.50€ y caducidad 2027-06-15"
+"Muéstrame todos los productos"
+"Registra un proveedor llamado Distribuciones García con email garcia@email.com"
+"Haz un pedido al proveedor PROV-ABC123 de 50 unidades de PROD-DEF456"
+"Revisa los productos caducados"
+"Muéstrame las estadísticas de stock por categoría"
+```
+
+---
+
+## Estructura
+
+```
+├── docker-compose.yml
 ├── backend/
-│   ├── Dockerfile              # Imagen Python 3.12
-│   ├── requirements.txt        # Dependencias Python
-│   ├── .env                    # 🔒 Variables de entorno (no versionado)
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── .env                        ← no versionado
 │   └── app/
-│       ├── main.py             # FastAPI: endpoints y CORS
+│       ├── main.py                 ← endpoints FastAPI
 │       └── agent/
-│           ├── cerebras_agent.py   # Cadena multi-agente (Router → Executor → Formatter)
-│           └── tools.py            # Definiciones de herramientas + lógica MongoDB
-│
+│           ├── cerebras_agent.py   ← cadena multi-agente
+│           └── tools.py            ← herramientas + lógica MongoDB
 └── frontend/
-    ├── Dockerfile              # Imagen Node 20
-    ├── package.json            # Dependencias React/Vite/Tailwind
+    ├── Dockerfile
+    ├── package.json
     └── src/
-        └── App.jsx             # Componente principal (Chat + Dashboard)
+        └── App.jsx                 ← chat + dashboard
 ```
 
 ---
 
-## 🔌 API Endpoints
+## Endpoints
 
-| Método | Endpoint | Descripción |
+| Método | Ruta | Qué hace |
 |---|---|---|
-| `POST` | `/api/chat` | Envía un mensaje al sistema multi-agente y recibe la respuesta estructurada |
-| `GET` | `/api/dashboard` | Devuelve los datos actuales de productos, proveedores y pedidos para el dashboard |
-| `GET` | `/api/health` | Comprobación del estado del servicio y los modelos activos |
-
----
-
-## 🛑 Detener el Proyecto
-
-```bash
-docker-compose down
-```
-
-Para detener **y eliminar los datos** de la base de datos:
-
-```bash
-docker-compose down -v
-```
-
----
-
-## 👥 Autores
-
-Desarrollado como práctica de la asignatura **Sistemas de la Información Empresarial** — Universidad de Málaga (UMA), curso 2025/2026.
-
----
-
-<div align="center">
-
-*Hecho con ☕ y mucha IA*
-
-</div>
-]]>
+| POST | `/api/chat` | Envía un mensaje al sistema multi-agente |
+| GET | `/api/dashboard` | Datos de productos, proveedores y pedidos |
+| GET | `/api/health` | Estado del servicio |
