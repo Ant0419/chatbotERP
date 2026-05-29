@@ -74,6 +74,8 @@ export default function App() {
   ]);
   const [loading, setLoading] = useState(false);
   const [liveDashboardData, setLiveDashboardData] = useState([]);
+  const [liveProveedores, setLiveProveedores] = useState([]);
+  const [livePedidos, setLivePedidos] = useState([]);
   const bottomRef = useRef(null);
 
   async function fetchDashboardData() {
@@ -81,9 +83,9 @@ export default function App() {
       const res = await fetch("http://localhost:8000/api/dashboard");
       if (res.ok) {
         const data = await res.json();
-        if (data.productos) {
-          setLiveDashboardData(data.productos);
-        }
+        if (data.productos) setLiveDashboardData(data.productos);
+        if (data.proveedores) setLiveProveedores(data.proveedores);
+        if (data.pedidos) setLivePedidos(data.pedidos);
       }
     } catch (e) {
       console.error("Error fetching dashboard data:", e);
@@ -257,8 +259,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bloque 2: Inventario Live */}
-        <DashboardBlock title="Datos en Vivo">
+        {/* Bloque 2: Inventario Productos */}
+        <DashboardBlock title="Inventario (Productos)">
           {dashboardData.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-300">
@@ -267,6 +269,7 @@ export default function App() {
                     <th className="px-4 py-3 font-medium rounded-tl-lg">Nombre</th>
                     <th className="px-4 py-3 font-medium">SKU</th>
                     <th className="px-4 py-3 font-medium">Precio</th>
+                    <th className="px-4 py-3 font-medium">Caducidad</th>
                     <th className="px-4 py-3 font-medium rounded-tr-lg">Stock</th>
                   </tr>
                 </thead>
@@ -276,6 +279,7 @@ export default function App() {
                       <td className="px-4 py-3 font-medium">{item.nombre || item.id || `Item ${idx}`}</td>
                       <td className="px-4 py-3 text-slate-400">{item.sku || "N/A"}</td>
                       <td className="px-4 py-3 text-slate-400">{item.precio_venta !== undefined ? `$${item.precio_venta}` : "N/A"}</td>
+                      <td className="px-4 py-3">{item.fecha_caducidad ? <span className="text-slate-300">{item.fecha_caducidad}</span> : <span className="text-slate-500">N/A</span>}</td>
                       <td className="px-4 py-3 font-bold text-cyan-400">{item.stock !== undefined ? item.stock : (item.total || 0)}</td>
                     </tr>
                   ))}
@@ -283,8 +287,80 @@ export default function App() {
               </table>
             </div>
           ) : (
-            <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-700/50 rounded-lg">
-              <span className="text-sm text-slate-500">No hay datos activos para mostrar</span>
+            <div className="h-20 flex items-center justify-center border-2 border-dashed border-slate-700/50 rounded-lg">
+              <span className="text-sm text-slate-500">No hay productos registrados</span>
+            </div>
+          )}
+        </DashboardBlock>
+
+        {/* Bloque 3: Proveedores */}
+        <DashboardBlock title="Proveedores">
+          {liveProveedores.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700/50">
+                  <tr>
+                    <th className="px-4 py-3 font-medium rounded-tl-lg">Código</th>
+                    <th className="px-4 py-3 font-medium">Nombre</th>
+                    <th className="px-4 py-3 font-medium">Email</th>
+                    <th className="px-4 py-3 font-medium">Teléfono</th>
+                    <th className="px-4 py-3 font-medium rounded-tr-lg">País</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {liveProveedores.map((prov, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-4 py-3 text-cyan-400 text-xs font-mono font-bold">{prov.codigo_proveedor || <span className="text-slate-500">N/A</span>}</td>
+                      <td className="px-4 py-3 font-medium">{prov.nombre || "N/A"}</td>
+                      <td className="px-4 py-3 text-slate-400">{prov.contacto_email || "N/A"}</td>
+                      <td className="px-4 py-3 text-slate-400">{prov.telefono || <span className="text-slate-500">—</span>}</td>
+                      <td className="px-4 py-3 text-slate-400">{prov.pais || <span className="text-slate-500">—</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="h-20 flex items-center justify-center border-2 border-dashed border-slate-700/50 rounded-lg">
+              <span className="text-sm text-slate-500">No hay proveedores registrados</span>
+            </div>
+          )}
+        </DashboardBlock>
+
+        {/* Bloque 4: Últimos Pedidos */}
+        <DashboardBlock title="Últimos Pedidos">
+          {livePedidos.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700/50">
+                  <tr>
+                    <th className="px-4 py-3 font-medium rounded-tl-lg">ID Pedido</th>
+                    <th className="px-4 py-3 font-medium">Proveedor</th>
+                    <th className="px-4 py-3 font-medium">Productos</th>
+                    <th className="px-4 py-3 font-medium">Coste</th>
+                    <th className="px-4 py-3 font-medium rounded-tr-lg">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {livePedidos.slice(-10).reverse().map((ped, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-4 py-3 text-cyan-400 text-xs font-mono font-bold">{ped.codigo_pedido || (ped._id ? ped._id.slice(-8) : "N/A")}</td>
+                      <td className="px-4 py-3 text-slate-300 text-xs">{ped.nombre_proveedor ? `${ped.nombre_proveedor} (${ped.codigo_proveedor})` : (ped.codigo_proveedor || "N/A")}</td>
+                      <td className="px-4 py-3 text-slate-300 text-xs">{ped.detalles ? ped.detalles.map(d => `${d.sku}:${d.cantidad_pedida}`).join(", ") : (Array.isArray(ped.productos) ? ped.productos.join(", ") : "N/A")}</td>
+                      <td className="px-4 py-3 font-bold text-cyan-400">{ped.coste_total !== undefined ? `${ped.coste_total}€` : "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ped.estado === "completado" ? "bg-emerald-500/20 text-emerald-400" : ped.estado === "recibido" ? "bg-blue-500/20 text-blue-400" : "bg-amber-500/20 text-amber-400"}`}>
+                          {ped.estado || "N/A"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="h-20 flex items-center justify-center border-2 border-dashed border-slate-700/50 rounded-lg">
+              <span className="text-sm text-slate-500">No hay pedidos registrados</span>
             </div>
           )}
         </DashboardBlock>

@@ -62,9 +62,15 @@ async def chat(request: ChatRequest):
 # ── Dashboard Data ────────────────────────────────────────────────────────────
 @app.get("/api/dashboard")
 async def dashboard_data():
-    from app.agent.tools import _get_productos
-    data = await _get_productos()
-    return data
+    from app.agent.tools import _get_productos, _get_proveedores, _get_pedidos
+    productos = await _get_productos()
+    proveedores = await _get_proveedores()
+    pedidos = await _get_pedidos()
+    return {
+        "productos": productos.get("productos", []),
+        "proveedores": proveedores.get("proveedores", []),
+        "pedidos": pedidos.get("pedidos", []),
+    }
 
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/api/health")

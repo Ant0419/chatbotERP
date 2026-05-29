@@ -32,17 +32,35 @@ Eres el ROUTER de un sistema ERP multi-agente. Tu trabajo es analizar la petici�
 del usuario y convertirla en una orden técnica clara y directa para el siguiente
 agente (el Executor).
 
-Reglas:
-- Identifica la INTENCIÓN del usuario: ¿quiere ver datos?, ¿crear algo?, ¿borrar?, ¿estadísticas?
+Herramientas disponibles:
+- PRODUCTOS: get_productos, create_producto, update_producto (por SKU), delete_producto (por SKU)
+- PROVEEDORES: get_proveedores, create_proveedor, update_proveedor (por codigo_proveedor), delete_proveedor (por codigo_proveedor)
+- PEDIDOS: create_pedido (codigo_proveedor + lista 'SKU:cantidad'), get_pedidos, update_pedido (por codigo_pedido), delete_pedido (por codigo_pedido)
+- DESECHOS: procesar_caducados, get_desechos
+- ESTADÍSTICAS: get_estadisticas con tipo='stock_categoria' | 'top_productos_stock' | 'pedidos_mes' | 'perdidas_desechos'
+
+Reglas CRÍTICAS:
+- Identifica la INTENCIÓN del usuario: ¿ver?, ¿crear?, ¿actualizar?, ¿borrar?, ¿estadísticas?, ¿caducados?
 - Identifica la ENTIDAD: productos, proveedores, pedidos, desechos o estadísticas.
+- Si el usuario pide crear, añadir o registrar un PROVEEDOR, tu intención debe apuntar OBLIGATORIAMENTE a create_proveedor. NUNCA uses la herramienta de lectura (get_proveedores) si el usuario pide crear.
+- Si el usuario pide crear un PRODUCTO, tu intención debe ser create_producto.
+- Si el usuario pide crear un PEDIDO, tu intención debe ser create_pedido.
+
 - Redacta una orden concisa y sin ambigüedad. Ejemplos:
   • "Ejecuta get_productos sin filtros y devuelve todos los datos."
-  • "Ejecuta create_producto con nombre='Arroz 1kg', sku='P010', stock=200, precio_venta=1.50"
-  • "Ejecuta get_estadisticas con tipo='stock_categoria'"
+  • "Ejecuta create_producto con nombre='Arroz 1kg', stock=200, precio_venta=1.50, fecha_caducidad='2026-12-31'"
+  • "Ejecuta update_producto con sku='PROD-ABC123', stock=500"
+  • "Ejecuta delete_producto con sku='PROD-ABC123'"
+  • "Ejecuta create_proveedor con nombre='DistribucionesXYZ', contacto_email='xyz@email.com'"
+  • "Ejecuta update_proveedor con codigo_proveedor='PROV-ABC...', nombre='Nuevo Nombre'"
+  • "Ejecuta delete_proveedor con codigo_proveedor='PROV-ABC...'"
+  • "Ejecuta create_pedido con codigo_proveedor='PROV-ABC...', productos=['PROD-ABC123:50', 'PROD-DEF456:20']"
+  • "Ejecuta update_pedido con codigo_pedido='ORD-123...', estado='completado'"
+  • "Ejecuta delete_pedido con codigo_pedido='ORD-123...'"
+  • "Ejecuta get_estadisticas con tipo='top_productos_stock'"
   • "Ejecuta procesar_caducados para revisar productos vencidos."
 - Si el usuario pide crear algo pero NO proporciona todos los datos necesarios,
   genera una orden que diga: "SOLICITAR_FORMULARIO para [entidad] con campos: [lista de campos]"
-- Si el usuario pide eliminar algo, genera: "SOLICITAR_CONFIRMACION para eliminar [entidad] con [identificador]"
 - Responde SOLAMENTE con la orden técnica. Nada más.
 """
 
@@ -85,13 +103,16 @@ Reglas:
 CRÍTICO: Cuando muestres listas de datos (productos, pedidos, proveedores, desechos, etc.), NUNCA respondas solo con un resumen como "Hay 3 productos" o "Se encontró 1 pedido". DEBES mostrar los detalles de CADA elemento en el campo "message" usando un formato de viñetas limpio y estructurado con saltos de línea (\\n).
 
 Formato obligatorio para PRODUCTOS:
-📦 **[Nombre del Producto]**\\n   - SKU: [SKU]\\n   - Stock: [Stock] uds\\n   - Precio: [Precio]€\\n\\n
+📦 **[Nombre del Producto]**\\n   - SKU: [SKU]\\n   - Stock: [Stock] uds\\n   - Precio venta: [Precio]€\\n   - Caducidad: [Fecha]\\n\\n
 
 Formato obligatorio para PEDIDOS:
-📋 **Pedido [ID]**\\n   - Proveedor: [Proveedor]\\n   - Producto: [Producto]\\n   - Cantidad: [Cantidad] uds\\n   - Estado: [Estado]\\n   - Fecha: [Fecha]\\n\\n
+📋 **Pedido [ID]**\\n   - Proveedor: [Proveedor]\\n   - Productos: [lista de SKU:cantidad]\\n   - Coste total: [Coste]€\\n   - Estado: [Estado]\\n   - Fecha: [Fecha]\\n\\n
 
 Formato obligatorio para PROVEEDORES:
-🏢 **[Nombre del Proveedor]**\\n   - ID: [ID]\\n   - Contacto: [Contacto]\\n   - Teléfono: [Teléfono]\\n\\n
+🏢 **[Nombre del Proveedor]**\\n   - ID: [ID]\\n   - Email: [Contacto]\\n   - Teléfono: [Teléfono]\\n   - País: [País]\\n\\n
+
+Formato obligatorio para DESECHOS:
+🗑️ **[Nombre del Producto]**\\n   - SKU: [SKU]\\n   - Unidades desechadas: [Cantidad]\\n   - Pérdida estimada: [Pérdida]€\\n   - Fecha caducidad: [Fecha]\\n   - Fecha baja: [Fecha baja]\\n\\n
 
 Siempre incluye una línea introductoria antes de la lista, por ejemplo:
 "Aquí tienes los 3 productos registrados:\\n\\n📦 **Aceite 1L**\\n   - SKU: P001\\n   - Stock: 50 uds\\n   - Precio: 3.50€\\n\\n📦 **Arroz 1kg**\\n..."
@@ -116,7 +137,7 @@ def _error_response(agent_name: str, error_msg: str) -> dict:
 
 def _parse_json_response(raw_text: str) -> dict:
     """Intenta parsear JSON desde la respuesta del modelo, limpiando markdown."""
-    text = raw_text.strip()
+    text = raw_text.strip() if raw_text else ""
     if text.startswith("```"):
         text = text.split("```")[1]
         if text.startswith("json"):
@@ -165,7 +186,8 @@ class CerebrasAgent:
                 messages=router_messages,
                 temperature=0.0
             )
-            router_order = router_response.choices[0].message.content.strip()
+            msg_content = router_response.choices[0].message.content
+            router_order = msg_content.strip() if msg_content else ""
 
         except Exception as e:
             return _error_response("Router", f"{type(e).__name__}: {str(e)}")
@@ -180,8 +202,18 @@ class CerebrasAgent:
             ]
 
             tc = "required"
-            if "create_producto" in router_order.lower():
-                tc = {"type": "function", "function": {"name": "create_producto"}}
+            # Forzar herramienta específica si el Router la menciona explícitamente
+            forced_tools = [
+                "create_producto", "update_producto", "delete_producto", "get_productos",
+                "create_proveedor", "update_proveedor", "delete_proveedor", "get_proveedores",
+                "create_pedido", "get_pedidos", "update_pedido", "delete_pedido",
+                "get_desechos", "procesar_caducados", "get_estadisticas",
+            ]
+            order_lower = router_order.lower()
+            for tool_name in forced_tools:
+                if tool_name in order_lower:
+                    tc = {"type": "function", "function": {"name": tool_name}}
+                    break
 
             executor_response = client.chat.completions.create(
                 model=EXECUTOR_MODEL,
@@ -214,11 +246,13 @@ class CerebrasAgent:
                 second_response = client.chat.completions.create(
                     model=EXECUTOR_MODEL,
                     messages=executor_messages,
-                    temperature=0.0
+                    temperature=0.0,
                 )
-                executor_data = second_response.choices[0].message.content.strip()
+                msg_content = second_response.choices[0].message.content
+                executor_data = msg_content.strip() if msg_content else ""
             else:
-                executor_data = response_message.content.strip()
+                msg_content = response_message.content
+                executor_data = msg_content.strip() if msg_content else ""
 
         except Exception as e:
             return _error_response("Executor", f"{type(e).__name__}: {str(e)}")
@@ -227,19 +261,18 @@ class CerebrasAgent:
         # PASO 3: FORMATTER — Empaqueta los datos en el JSON del frontend
         # ══════════════════════════════════════════════════════════════════════
         try:
-            formatter_messages = [
-                {"role": "system", "content": FORMATTER_PROMPT},
-                {"role": "user", "content": f"Datos del Executor:\n{executor_data}\n\nContexto original del usuario: {message}"}
-            ]
-            
             # Aseguramos que la respuesta sea JSON usando response_format si está soportado (Cerebras lo soporta en muchos modelos, pero por precaución pedimos JSON en el prompt)
             formatter_response = client.chat.completions.create(
                 model=FORMATTER_MODEL,
-                messages=formatter_messages,
+                messages=[
+                    {"role": "system", "content": FORMATTER_PROMPT},
+                    {"role": "user", "content": f"Datos del Executor:\n{executor_data}\n\nContexto original del usuario: {message}"}
+                ],
                 temperature=0.0,
                 response_format={"type": "json_object"}
             )
-            raw_json = formatter_response.choices[0].message.content.strip()
+            msg_content = formatter_response.choices[0].message.content
+            raw_json = msg_content.strip() if msg_content else ""
 
         except Exception as e:
             return _error_response("Formatter", f"{type(e).__name__}: {str(e)}")
