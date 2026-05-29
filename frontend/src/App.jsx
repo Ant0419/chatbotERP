@@ -32,7 +32,7 @@ function Bubble({ msg }) {
       </div>
       <div className="bg-slate-800/40 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-tl-sm max-w-[80%]">
         {parsed?.message ? (
-          <p className="text-sm text-slate-300 leading-relaxed">{parsed.message}</p>
+          <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{parsed.message}</p>
         ) : (
           <p className="text-sm text-slate-300 italic">Procesando respuesta...</p>
         )}

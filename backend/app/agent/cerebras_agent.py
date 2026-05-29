@@ -80,9 +80,21 @@ Reglas:
 - Si los datos dicen FORMULARIO|entidad|campos, usa action="show_form" y llena form_fields con los campos.
 - Si los datos dicen CONFIRMACION|entidad|id, usa action="confirm_delete" con un mensaje descriptivo.
 - Si los datos son un mensaje de éxito/error simple, usa action="show_message".
-- Siempre incluye un "message" amigable en el chat resumiendo lo que has hecho (ej. "He creado el producto Aceite 1L con 50 unidades" o "Aquí tienes la lista, tienes 3 productos en total").
-- Cuando el usuario pida ver o listar productos, OBLIGATORIAMENTE debes formatear la respuesta en texto usando una lista Markdown. Para cada producto, incluye explícitamente: Nombre, SKU, Precio y Stock. NUNCA respondas solo con un resumen numérico.
 - Responde SOLAMENTE con el JSON. Nada de texto adicional fuera del JSON.
+
+CRÍTICO: Cuando muestres listas de datos (productos, pedidos, proveedores, desechos, etc.), NUNCA respondas solo con un resumen como "Hay 3 productos" o "Se encontró 1 pedido". DEBES mostrar los detalles de CADA elemento en el campo "message" usando un formato de viñetas limpio y estructurado con saltos de línea (\\n).
+
+Formato obligatorio para PRODUCTOS:
+📦 **[Nombre del Producto]**\\n   - SKU: [SKU]\\n   - Stock: [Stock] uds\\n   - Precio: [Precio]€\\n\\n
+
+Formato obligatorio para PEDIDOS:
+📋 **Pedido [ID]**\\n   - Proveedor: [Proveedor]\\n   - Producto: [Producto]\\n   - Cantidad: [Cantidad] uds\\n   - Estado: [Estado]\\n   - Fecha: [Fecha]\\n\\n
+
+Formato obligatorio para PROVEEDORES:
+🏢 **[Nombre del Proveedor]**\\n   - ID: [ID]\\n   - Contacto: [Contacto]\\n   - Teléfono: [Teléfono]\\n\\n
+
+Siempre incluye una línea introductoria antes de la lista, por ejemplo:
+"Aquí tienes los 3 productos registrados:\\n\\n📦 **Aceite 1L**\\n   - SKU: P001\\n   - Stock: 50 uds\\n   - Precio: 3.50€\\n\\n📦 **Arroz 1kg**\\n..."
 
 CRITICAL: You must ONLY format the exact data provided by the Executor. If the database returns an empty list, you MUST return an empty list. NEVER invent, hallucinate, or mock data (like 'Harina' or 'Aceite').
 """
